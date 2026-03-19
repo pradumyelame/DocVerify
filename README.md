@@ -4,29 +4,27 @@ An automated system designed to verify the authenticity of documents through adv
 
 ## 🚀 Key Features
 
-- **Automated Verification**: Quick and accurate document analysis.
-- **Multiple Feature Extraction**: Utilizes CNN, SIFT, HOG, LBP, and ORB for comprehensive feature analysis.
-- **Robust Preprocessing**: Includes grayscale conversion, resizing, and noise reduction.
-- **User-Friendly Dashboard**: intuitive interface for uploading and viewing verification results.
+- **21 Advanced Preprocessing Techniques**: Includes Adaptive Thresholding, Otsu, CLAHE, Morphological operations, and more.
+- **Blockchain Data Integrity**: Every text extraction is cryptographically hashed and stored in a local immutable ledger to prevent tampering.
+- **Multiple Feature Extraction**: Utilizes CNN, SIFT, HOG, LBP, and ORB.
+- **Secure Dashboard**: Streamlined interface focused on direct document analysis results.
 
 ## 🛠️ Tech Stack
 
 - **Frontend**: React.js (Vite), Axios, Lucide React, CSS3.
-- **Backend**: Python (Flask), OpenCV, NumPy, Flask-CORS.
-- **Database**: SQLite (for user management and metadata).
+- **Backend**: Python (Flask), OpenCV, NumPy, Flask-CORS, **Hashlib (Blockchain)**.
+- **Database**: SQLite & **Local Blockchain Ledger** (`blockchain.json`).
 
 ## 📁 Project Structure
 
 ```text
 Mega_Project_Final/
-├── backend/            # Flask API and Document Processing Logic
-│   ├── core/           # Preprocessing, Extraction, and Verification modules
-│   ├── instance/       # SQLite database
-│   ├── uploads/        # Temporary storage for uploaded documents
+├── backend/            # Flask API and Processing Logic
+│   ├── core/           # Preprocessing, Blockchain, and Features
+│   ├── instance/       # Blockchain ledger and database
+│   ├── uploads/        # Document storage
 │   └── app.py          # Backend entry point
 ├── frontend/           # React Application
-│   ├── src/            # Components, Pages, and Context
-│   └── vite.config.js  # Vite configuration
 └── README.md           # Project documentation
 ```
 
