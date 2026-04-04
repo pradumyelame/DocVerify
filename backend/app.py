@@ -75,7 +75,6 @@ def verify():
                 "is_valid": blockchain.is_chain_valid()
             }
         }
-
         return jsonify({
             "status": "success",
             "data": final_report
