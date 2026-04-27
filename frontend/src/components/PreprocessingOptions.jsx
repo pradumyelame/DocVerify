@@ -65,7 +65,7 @@ const PreprocessingOptions = ({ onNext, onBack }) => {
       <div className="options-header">
         <Settings className="header-icon" />
         <h2>Configure Preprocessing</h2>
-        <p>Select the enhancement techniques to apply before AI verification.</p>
+        <p>Select the enhancement techniques to apply before verification.</p>
       </div>
 
       <div className="categories-stack">

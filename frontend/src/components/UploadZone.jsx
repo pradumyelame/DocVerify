@@ -36,8 +36,12 @@ const UploadZone = ({ onUpload, error }) => {
   };
 
   const handleFile = (file) => {
-    // Only accept image or pdf
-    if (file.type.startsWith('image/') || file.type === 'application/pdf') {
+    // Accept Image, PDF, and MS Word Docs
+    const isImage = file.type.startsWith('image/');
+    const isPDF = file.type === 'application/pdf';
+    const isWord = file.name.toLowerCase().endsWith('.doc') || file.name.toLowerCase().endsWith('.docx');
+    
+    if (isImage || isPDF || isWord) {
       setSelectedFile(file);
     }
   };
@@ -69,7 +73,7 @@ const UploadZone = ({ onUpload, error }) => {
           onDragOver={handleDrag}
           onDrop={handleDrop}
         >
-          <input type="file" id="file-upload" multiple={false} onChange={handleChange} accept="image/png, image/jpeg, application/pdf" />
+          <input type="file" id="file-upload" multiple={false} onChange={handleChange} accept="image/png, image/jpeg, application/pdf, .doc, .docx" />
           <label htmlFor="file-upload" className="drop-zone-content">
             {!selectedFile ? (
               <>
@@ -78,7 +82,7 @@ const UploadZone = ({ onUpload, error }) => {
                 </div>
                 <h3>Drag & Drop your file</h3>
                 <p>or click to browse from device</p>
-                <span className="file-hint">Supported formats: JPG, PNG, PDF (Max 16MB)</span>
+                <span className="file-hint">Supported formats: JPG, PNG, PDF, DOCX (Max 16MB)</span>
               </>
             ) : (
               <div className="file-selected">
@@ -92,7 +96,7 @@ const UploadZone = ({ onUpload, error }) => {
         </div>
 
         <button type="submit" className="btn btn-primary submit-btn" disabled={!selectedFile}>
-          Start AI Analysis
+          Start Analysis
         </button>
       </form>
     </div>

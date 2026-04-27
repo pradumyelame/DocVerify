@@ -23,8 +23,8 @@ const FeatureExtractionOptions = ({ onNext, onBack }) => {
     <div className="options-container glass-panel fade-in-up">
       <div className="options-header">
         <Cpu className="header-icon" />
-        <h2>AI Feature Extraction</h2>
-        <p>Select the AI models and algorithms to analyze the document features.</p>
+        <h2>Feature Extraction</h2>
+        <p>Select the models and algorithms to analyze the document features.</p>
       </div>
 
       <div className="techniques-grid">

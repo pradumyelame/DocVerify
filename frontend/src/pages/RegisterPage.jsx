@@ -8,6 +8,7 @@ const RegisterPage = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [role, setRole] = useState('user');
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -26,7 +27,8 @@ const RegisterPage = () => {
         try {
             await axios.post('http://localhost:5000/api/register', {
                 username,
-                password
+                password,
+                role
             });
             setSuccess(true);
             setTimeout(() => navigate('/login'), 2000);
@@ -42,7 +44,7 @@ const RegisterPage = () => {
             <div className="auth-card glass-panel" style={{width: '100%', maxWidth: '400px', padding: '3rem'}}>
                 <div className="auth-header" style={{textAlign: 'center', marginBottom: '2.5rem'}}>
                     <h1 className="section-title" style={{fontSize: '2.5rem'}}>Create Account</h1>
-                    <p style={{color: 'var(--text-muted)'}}>Join DocVerify AI platform today</p>
+                    <p style={{color: 'var(--text-muted)'}}>Join DocVerify platform today</p>
                 </div>
 
                 {success ? (
@@ -59,6 +61,11 @@ const RegisterPage = () => {
                                 <span>{error}</span>
                             </div>
                         )}
+                        
+                        <div className="auth-tabs">
+                            <button type="button" className={`auth-tab ${role === 'user' ? 'active' : ''}`} onClick={() => {setRole('user'); setError('');}}>User</button>
+                            <button type="button" className={`auth-tab ${role === 'admin' ? 'active' : ''}`} onClick={() => {setRole('admin'); setError('');}}>Admin</button>
+                        </div>
                         
                         <div className="input-group">
                             <input

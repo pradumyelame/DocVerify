@@ -8,6 +8,7 @@ import './Auth.css';
 const LoginPage = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const [role, setRole] = useState('user');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const { login } = useAuth();
@@ -21,7 +22,8 @@ const LoginPage = () => {
         try {
             const response = await axios.post('http://localhost:5000/api/login', {
                 username,
-                password
+                password,
+                role
             });
             login(response.data.user);
             navigate('/');
@@ -46,6 +48,11 @@ const LoginPage = () => {
                         <span>{error}</span>
                     </div>
                 )}
+
+                <div className="auth-tabs">
+                    <button type="button" className={`auth-tab ${role === 'user' ? 'active' : ''}`} onClick={() => {setRole('user'); setError('');}}>User</button>
+                    <button type="button" className={`auth-tab ${role === 'admin' ? 'active' : ''}`} onClick={() => {setRole('admin'); setError('');}}>Admin</button>
+                </div>
 
                 <form onSubmit={handleSubmit} style={{display: 'flex', flexDirection: 'column', gap: '1.25rem'}}>
                     <div className="input-group">

@@ -3,17 +3,12 @@ import numpy as np
 import os
 
 def preprocess_image(filepath, techniques=None):
-    """
-    Applies image preprocessing techniques based on user selection.
-    Supports 21 advanced techniques.
-    """
     if not os.path.exists(filepath):
         raise ValueError(f"File not found at: {filepath}")
 
     if techniques is None:
         techniques = ['resizing', 'grayscale']
 
-    # Handle PDF conversion
     if filepath.lower().endswith('.pdf'):
         import fitz
         doc = fitz.open(filepath)
@@ -21,6 +16,24 @@ def preprocess_image(filepath, techniques=None):
         pix = page.get_pixmap()
         img_data = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.h, pix.w, pix.n)
         image = cv2.cvtColor(img_data, cv2.COLOR_RGB2BGR) if pix.n >= 3 else img_data
+    elif filepath.lower().endswith(('.docx', '.doc')):
+        try:
+            import docx
+            from PIL import Image, ImageDraw
+            import textwrap
+            doc = docx.Document(filepath)
+            extracted = "\n".join([p.text for p in doc.paragraphs if p.text.strip()])
+            
+            img = Image.new('RGB', (800, 1200), color=(255, 255, 255))
+            draw = ImageDraw.Draw(img)
+            
+            wrapped_text = "\n".join(textwrap.wrap(extracted, width=110))
+            draw.text((30, 30), wrapped_text[:5000], fill=(0, 0, 0)) 
+            
+            image_raw = np.array(img)
+            image = cv2.cvtColor(image_raw, cv2.COLOR_RGB2BGR)
+        except Exception as e:
+            image = np.ones((1200, 800, 3), dtype=np.uint8) * 255
     else:
         image = cv2.imread(filepath)
 
@@ -30,12 +43,10 @@ def preprocess_image(filepath, techniques=None):
     processed_data = {'original': image.copy()}
     curr_image = image
 
-    # 1. Resizing & Resampling
     if 'resizing' in techniques:
         curr_image = cv2.resize(curr_image, (800, 1000), interpolation=cv2.INTER_CUBIC)
         processed_data['resizing'] = curr_image.copy()
 
-    # 2. Color Space Conversions
     if 'grayscale' in techniques:
         curr_image = cv2.cvtColor(curr_image, cv2.COLOR_BGR2GRAY)
         processed_data['grayscale'] = curr_image.copy()
@@ -50,7 +61,6 @@ def preprocess_image(filepath, techniques=None):
         curr_image = cv2.cvtColor(curr_image, cv2.COLOR_BGR2LAB)
         processed_data['lab'] = curr_image.copy()
 
-    # 3. Enhancement
     if 'equalization' in techniques:
         if len(curr_image.shape) == 3:
             yuv = cv2.cvtColor(curr_image, cv2.COLOR_BGR2YUV)
@@ -70,7 +80,6 @@ def preprocess_image(filepath, techniques=None):
             curr_image = clahe.apply(curr_image)
         processed_data['clahe'] = curr_image.copy()
 
-    # 4. Noise Reduction & Smoothing
     if 'gaussian_blur' in techniques:
         curr_image = cv2.GaussianBlur(curr_image, (5, 5), 0)
         processed_data['gaussian_blur'] = curr_image.copy()
@@ -83,13 +92,11 @@ def preprocess_image(filepath, techniques=None):
         curr_image = cv2.bilateralFilter(curr_image, 9, 75, 75)
         processed_data['bilateral_filter'] = curr_image.copy()
 
-    # 5. Sharpening
     if 'sharpening' in techniques:
         kernel = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]])
         curr_image = cv2.filter2D(curr_image, -1, kernel)
         processed_data['sharpening'] = curr_image.copy()
 
-    # 6. Thresholding & Binarization
     if 'thresholding' in techniques:
         if len(curr_image.shape) == 3: curr_image = cv2.cvtColor(curr_image, cv2.COLOR_BGR2GRAY)
         _, curr_image = cv2.threshold(curr_image, 127, 255, cv2.THRESH_BINARY)
@@ -105,7 +112,6 @@ def preprocess_image(filepath, techniques=None):
         curr_image = cv2.adaptiveThreshold(curr_image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
         processed_data['adaptive_thresholding'] = curr_image.copy()
 
-    # 7. Morphological Operations
     kernel = np.ones((5,5), np.uint8)
     if 'erosion' in techniques:
         curr_image = cv2.erode(curr_image, kernel, iterations=1)
@@ -123,13 +129,11 @@ def preprocess_image(filepath, techniques=None):
         curr_image = cv2.morphologyEx(curr_image, cv2.MORPH_CLOSE, kernel)
         processed_data['closing'] = curr_image.copy()
 
-    # 8. Edge Detection
     if 'edge_detection' in techniques:
         if len(curr_image.shape) == 3: curr_image = cv2.cvtColor(curr_image, cv2.COLOR_BGR2GRAY)
         curr_image = cv2.Canny(curr_image, 30, 100)
         processed_data['edge_detection'] = curr_image.copy()
 
-    # 9. Geometric Transformations & Normalization
     if 'rotation' in techniques:
         (h, w) = curr_image.shape[:2]
         center = (w // 2, h // 2)
@@ -146,7 +150,6 @@ def preprocess_image(filepath, techniques=None):
         curr_image = cv2.copyMakeBorder(curr_image, 50, 50, 50, 50, cv2.BORDER_CONSTANT, value=[0,0,0])
         processed_data['padding'] = curr_image.copy()
 
-    # Final result for compatibility
     processed_data['final'] = curr_image
     if 'gray' not in processed_data:
         processed_data['gray'] = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if len(image.shape) == 3 else image
