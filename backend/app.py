@@ -10,10 +10,10 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-from core.preprocessor import preprocess_image
-from core.feature_extractor import get_extracted_features
-from core.verifier import verify_document
-from core.blockchain import Blockchain
+from backend.core.preprocessor import preprocess_image
+from backend.core.feature_extractor import get_extracted_features
+from backend.core.verifier import verify_document
+from backend.core.blockchain import Blockchain
 
 app = Flask(__name__)
 # Allow the Vercel frontend and local development
@@ -159,7 +159,7 @@ def verify():
             
             # --- NEW LOGIC: Store admin upload to MongoDB via Affinda ---
             try:
-                from core.digital_verifier import call_affinda_api
+                from backend.core.digital_verifier import call_affinda_api
                 from pymongo import MongoClient
                 import uuid
                 
