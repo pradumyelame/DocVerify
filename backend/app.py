@@ -16,8 +16,15 @@ from core.verifier import verify_document
 from core.blockchain import Blockchain
 
 app = Flask(__name__)
-# Allow all for now but prioritize the Vercel URL if needed
-CORS(app, resources={r"/api/*": {"origins": ["https://doc-verify-orpin.vercel.app", "http://localhost:5173", "http://localhost:5174"]}})
+# Allow the Vercel frontend and local development
+CORS(app, resources={r"/api/*": {
+    "origins": [
+        "https://doc-verify-orpin.vercel.app", 
+        "https://doc-verify-orpin.vercel.app/",
+        "http://localhost:5173", 
+        "http://localhost:5174"
+    ]
+}})
 
 blockchain = Blockchain()
 
