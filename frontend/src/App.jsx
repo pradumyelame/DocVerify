@@ -14,6 +14,8 @@ const STEPS = {
   RESULT: 'result'
 };
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const STANDARD_PROCESSING_STEPS = [
   'Reading document image...',
   'Applying preprocessing filters...',
@@ -90,7 +92,7 @@ const VerificationFlow = ({ role }) => {
 
   const performVerification = async (formData) => {
     try {
-      const response = await fetch('http://localhost:5000/api/verify', {
+      const response = await fetch(`${API_BASE_URL}/api/verify`, {
         method: 'POST',
         body: formData,
       });
@@ -222,7 +224,7 @@ const DigitalVerificationFlow = ({ role }) => {
     formData.append('document', uploadedFile);
     
     try {
-      const response = await fetch('http://localhost:5000/api/verify_digital', {
+      const response = await fetch(`${API_BASE_URL}/api/verify_digital`, {
         method: 'POST',
         body: formData,
       });

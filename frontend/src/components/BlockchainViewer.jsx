@@ -9,6 +9,7 @@ const BlockchainViewer = () => {
   const [isValid, setIsValid] = useState(true);
   const [fetchingHash, setFetchingHash] = useState(null);
   const [ipfsCache, setIpfsCache] = useState({});
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
   useEffect(() => {
     fetchBlockchainData();
@@ -18,7 +19,7 @@ const BlockchainViewer = () => {
     if (ipfsCache[hash]) return;
     setFetchingHash(hash);
     try {
-      const response = await fetch(`http://localhost:5000/api/ipfs/${hash}`);
+      const response = await fetch(`${API_BASE_URL}/api/ipfs/${hash}`);
       const data = await response.json();
       if (data.status === 'success') {
         setIpfsCache(prev => ({...prev, [hash]: data.data}));
@@ -35,7 +36,7 @@ const BlockchainViewer = () => {
   const fetchBlockchainData = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/api/blockchain');
+      const response = await fetch(`${API_BASE_URL}/api/blockchain`);
       const data = await response.json();
       if (data.status === 'success') {
         setBlocks(data.data.reverse()); // Show newest first
@@ -138,7 +139,7 @@ const BlockchainViewer = () => {
                           {ipfsCache[block.data.ipfs_hash] && (
                             <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
                               <span style={{color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem', fontSize: '0.8rem'}}>Stored Content:</span>
-                              <div style={{ maxHeight: '100px', overflowY: 'auto', fontSize: '0.9rem', color: 'white', fontStyle: 'italic' }}>
+                              <div style={{ maxHeight: '100px', overflowY: 'auto', fontSize: '0.9rem', color: 'var(--text-main)', fontStyle: 'italic' }}>
                                 "{ipfsCache[block.data.ipfs_hash]}"
                               </div>
                             </div>
