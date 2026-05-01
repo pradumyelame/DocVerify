@@ -40,8 +40,8 @@ const RegisterPage = () => {
     };
 
     return (
-        <div className="container-centered fade-in-up">
-            <div className="auth-card glass-panel" style={{width: '100%', maxWidth: '400px', padding: '3rem'}}>
+        <div className="container-centered fade-in-up" style={{ width: '100%', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="auth-card glass-panel" style={{width: '100%', maxWidth: '450px', padding: '3rem', margin: 'auto'}}>
                 <div className="auth-header" style={{textAlign: 'center', marginBottom: '2.5rem'}}>
                     <h1 className="section-title" style={{fontSize: '2.5rem'}}>Create Account</h1>
                     <p style={{color: 'var(--text-muted)'}}>Join DocVerify platform today</p>

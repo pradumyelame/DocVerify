@@ -145,6 +145,32 @@ def verify():
         if role == 'admin':
             v_res = verify_document(features)
             
+            # --- NEW LOGIC: Store admin upload to MongoDB via Affinda ---
+            try:
+                from core.digital_verifier import call_affinda_api
+                from pymongo import MongoClient
+                import uuid
+                
+                affinda_res = call_affinda_api(filepath)
+                if affinda_res.get("status") == "success":
+                    data = affinda_res.get("data", {})
+                    if data:
+                        client = MongoClient("mongodb://localhost:27017/digitaldoc", serverSelectionTimeoutMS=2000)
+                        db = client["digitaldoc"]
+                        collection = db.trusted_documents
+                        record = {
+                            "document_id": data.get("document_id", str(uuid.uuid4())[:8]),
+                            "name": data.get("name", "Unknown Admin Document"),
+                            "status": "Verified",
+                            "source": "Admin Upload",
+                            "raw_data": data
+                        }
+                        collection.insert_one(record)
+                        print("✅ Admin document data successfully seeded to MongoDB Trusted DB!")
+            except Exception as e:
+                print(f"Failed to save admin document to MongoDB: {e}")
+            # -------------------------------------------------------------
+
             blockchain_record = {
                 "role": "admin",
                 "file": filename,
@@ -249,46 +275,80 @@ def verify():
                         uploaded_img = cv2.imread(filepath)
                         if admin_img is not None and uploaded_img is not None:
                             try:
-                                # Feature-based alignment (Registration)
-                                orb = cv2.ORB_create(1000)
-                                kp1, des1 = orb.detectAndCompute(admin_img, None)
-                                kp2, des2 = orb.detectAndCompute(uploaded_img, None)
+                                # Advanced Feature-based alignment (Registration) using SIFT
+                                sift = cv2.SIFT_create(nfeatures=2000)
+                                kp1, des1 = sift.detectAndCompute(admin_img, None)
+                                kp2, des2 = sift.detectAndCompute(uploaded_img, None)
                                 
                                 if des1 is not None and des2 is not None:
-                                    bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
-                                    matches = bf.match(des1, des2)
-                                    matches = sorted(matches, key=lambda x: x.distance)
-                                    good_matches = matches[:50]
+                                    # FLANN matcher
+                                    FLANN_INDEX_KDTREE = 1
+                                    index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
+                                    search_params = dict(checks = 50)
+                                    flann = cv2.FlannBasedMatcher(index_params, search_params)
+                                    matches = flann.knnMatch(des1, des2, k=2)
                                     
-                                    if len(good_matches) > 10:
+                                    # Lowe's ratio test
+                                    good_matches = []
+                                    for m, n in matches:
+                                        if m.distance < 0.75 * n.distance:
+                                            good_matches.append(m)
+                                    
+                                    if len(good_matches) > 15:
                                         src_pts = np.float32([kp1[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
                                         dst_pts = np.float32([kp2[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
                                         
+                                        # Use LMEDS or RANSAC. LMEDS can sometimes be more robust for documents
                                         M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
-                                        admin_aligned = cv2.warpPerspective(admin_img, M, (uploaded_img.shape[1], uploaded_img.shape[0]))
+                                        if M is not None:
+                                            admin_aligned = cv2.warpPerspective(admin_img, M, (uploaded_img.shape[1], uploaded_img.shape[0]))
+                                        else:
+                                            admin_aligned = cv2.resize(admin_img, (uploaded_img.shape[1], uploaded_img.shape[0]))
                                     else:
                                         admin_aligned = cv2.resize(admin_img, (uploaded_img.shape[1], uploaded_img.shape[0]))
                                 else:
                                     admin_aligned = cv2.resize(admin_img, (uploaded_img.shape[1], uploaded_img.shape[0]))
-                            except:
+                            except Exception as e:
+                                print(f"DEBUG: Registration failed: {e}")
                                 admin_aligned = cv2.resize(admin_img, (uploaded_img.shape[1], uploaded_img.shape[0]))
 
-                            diff = cv2.absdiff(admin_aligned, uploaded_img)
-                            gray_diff = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
-                            _, thresh_diff = cv2.threshold(gray_diff, 30, 255, cv2.THRESH_BINARY)
+                            # Difference detection
+                            # 1. Blur images to mitigate sub-pixel misalignment and scanning noise
+                            admin_blur = cv2.GaussianBlur(admin_aligned, (11, 11), 0)
+                            uploaded_blur = cv2.GaussianBlur(uploaded_img, (11, 11), 0)
                             
-                            # Clean up misalignment noise/anti-aliasing using morphological opening
-                            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
-                            thresh_diff = cv2.morphologyEx(thresh_diff, cv2.MORPH_OPEN, kernel)
+                            diff = cv2.absdiff(admin_blur, uploaded_blur)
+                            gray_diff = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
+                            
+                            # 2. Adaptive thresholding or low global threshold
+                            _, thresh_diff = cv2.threshold(gray_diff, 35, 255, cv2.THRESH_BINARY)
+                            
+                            # 3. Aggressive Morphological cleaning & grouping
+                            # This merges small disconnected dots (like within a photo) into a single solid block
+                            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (15, 15))
+                            thresh_diff = cv2.morphologyEx(thresh_diff, cv2.MORPH_CLOSE, kernel)
+                            thresh_diff = cv2.dilate(thresh_diff, kernel, iterations=3)
                             
                             diff_percentage = (np.sum(thresh_diff > 0) / thresh_diff.size)
                             
                             # Precision detection using contours
                             contours, _ = cv2.findContours(thresh_diff, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
                             for cnt in contours:
-                                if cv2.contourArea(cnt) > 4: # Lower threshold since we used MORPH_OPEN
-                                    x, y, w, h = cv2.boundingRect(cnt)
-                                    tamper_boxes.append([int(x), int(y), int(w), int(h)])
+                                if cv2.contourArea(cnt) > 800: # Focus on significant grouped changes (e.g. photos, blocks of text)
+                                    x, y, w_box, h_box = cv2.boundingRect(cnt)
+                                    
+                                    # Add some padding to the bounding box
+                                    pad = 10
+                                    x = max(0, x - pad)
+                                    y = max(0, y - pad)
+                                    w_box = min(uploaded_img.shape[1] - x, w_box + 2*pad)
+                                    h_box = min(uploaded_img.shape[0] - y, h_box + 2*pad)
+                                    
+                                    # Store original coordinates and dimensions
+                                    tamper_boxes.append({
+                                        'box': [int(x), int(y), int(w_box), int(h_box)],
+                                        'orig_res': [uploaded_img.shape[1], uploaded_img.shape[0]]
+                                    })
 
                             h_diff, w_diff = thresh_diff.shape
                             grid_size = 8
@@ -400,16 +460,30 @@ def verify():
             quadrants = tamper_data.get('tampered_quadrants', [])
             
             if boxes:
-                for (x, y, w_box, h_box) in boxes:
+                for box_item in boxes:
+                    # Scale coordinates from original to final_img resolution
+                    orig_x, orig_y, orig_w, orig_h = box_item['box']
+                    res_w, res_h = box_item['orig_res']
+                    
+                    x = int(orig_x * w / res_w)
+                    y = int(orig_y * h / res_h)
+                    w_box = int(orig_w * w / res_w)
+                    h_box = int(orig_h * h / res_h)
+                    
                     start_point = (x, y)
                     end_point = (x + w_box, y + h_box)
-                    cv2.rectangle(final_img, start_point, end_point, color, thickness + 1)
-                    # For small boxes, don't overlap text too much
-                    if w_box > 50:
-                        cv2.putText(final_img, 'TAMPERED', (x + 5, y + 15), font, font_scale * 0.5, color, 1)
+                    cv2.rectangle(final_img, start_point, end_point, color, thickness + 2)
+                    
+                    # Draw a semi-transparent overlay
+                    overlay = final_img.copy()
+                    cv2.rectangle(overlay, start_point, end_point, color, -1)
+                    cv2.addWeighted(overlay, 0.3, final_img, 0.7, 0, final_img)
+                    
+                    # Larger label
+                    cv2.putText(final_img, 'TAMPERED', (x, y - 10 if y > 30 else y + 30), font, font_scale * 0.7, color, 2)
             elif quadrants:
                 num_hashes = len(features.get('spatial_hashes', []))
-                grid_dim = int(np.sqrt(num_hashes)) if num_hashes > 0 else 4
+                grid_dim = int(np.sqrt(num_hashes)) if num_hashes > 0 else 8
                 
                 dh = h // grid_dim
                 dw = w // grid_dim
@@ -419,12 +493,16 @@ def verify():
                     start_point = (col * dw, row * dh)
                     end_point = ((col + 1) * dw, (row + 1) * dh)
                     cv2.rectangle(final_img, start_point, end_point, color, thickness + 2)
-                    cv2.putText(final_img, 'TAMPERED', (col * dw + 5, row * dh + 20), font, font_scale * 0.8, color, 1)
+                    
+                    overlay = final_img.copy()
+                    cv2.rectangle(overlay, start_point, end_point, color, -1)
+                    cv2.addWeighted(overlay, 0.2, final_img, 0.8, 0, final_img)
+                    
+                    cv2.putText(final_img, 'TAMPERED', (col * dw + 5, row * dh + 25), font, font_scale * 0.7, color, 2)
             else:
-                start_point = (int(w * 0.1), int(h * 0.4))
-                end_point = (int(w * 0.9), int(h * 0.6))
-                cv2.rectangle(final_img, start_point, end_point, color, thickness)
-                cv2.putText(final_img, 'TAMPERED REGION DETECTED', (int(w * 0.1), int(h * 0.4) - 10), font, font_scale, color, 2)
+                # Default indicator if no specific boxes found but verification failed
+                cv2.rectangle(final_img, (int(w*0.05), int(h*0.05)), (int(w*0.95), int(h*0.95)), color, thickness)
+                cv2.putText(final_img, 'GENERAL TAMPERING DETECTED', (int(w * 0.1), int(h * 0.5)), font, font_scale * 1.5, color, 3)
 
         _, buffer = cv2.imencode('.jpg', final_img)
         import base64
@@ -465,6 +543,39 @@ def get_ipfs_data(hash_key):
     if text:
         return jsonify({"status": "success", "data": text})
     return jsonify({"status": "error", "message": "Not found"}), 404
+
+from core.digital_verifier import process_digital_document
+
+@app.route('/api/verify_digital', methods=['POST'])
+def verify_digital():
+    if 'document' not in request.files:
+        return jsonify({"status": "error", "message": "No document uploaded"}), 400
+    
+    file = request.files['document']
+    if file.filename == '':
+        return jsonify({"status": "error", "message": "No selected file"}), 400
+
+    try:
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+        
+        # We need OpenCV image for QR code reading
+        image = cv2.imread(filepath)
+        
+        # Run digital verification pipeline
+        report = process_digital_document(filepath, image)
+        
+        return jsonify({
+            "status": "success",
+            "data": report
+        })
+
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": f"INTERNAL ERROR: {str(e)}"
+        }), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
