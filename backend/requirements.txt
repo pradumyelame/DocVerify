@@ -1,15 +1,16 @@
 flask
 flask-cors
-opencv-python
+opencv-python-headless
 numpy
 scikit-image
 scikit-learn
-tensorflow
+tensorflow-cpu
 werkzeug
 requests
 pymupdf
 easyocr
-torch
-torchvision
+torch --index-url https://download.pytorch.org/whl/cpu
+torchvision --index-url https://download.pytorch.org/whl/cpu
 flask-sqlalchemy
 python-dotenv
+gunicorn
