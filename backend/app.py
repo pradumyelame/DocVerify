@@ -5,6 +5,10 @@ import cv2
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 from core.preprocessor import preprocess_image
 from core.feature_extractor import get_extracted_features
@@ -155,7 +159,8 @@ def verify():
                 if affinda_res.get("status") == "success":
                     data = affinda_res.get("data", {})
                     if data:
-                        client = MongoClient("mongodb://localhost:27017/digitaldoc", serverSelectionTimeoutMS=2000)
+                        mongo_uri = os.getenv("MONGODB_URI", "mongodb://localhost:27017/digitaldoc")
+                        client = MongoClient(mongo_uri, serverSelectionTimeoutMS=2000)
                         db = client["digitaldoc"]
                         collection = db.trusted_documents
                         record = {
@@ -578,4 +583,5 @@ def verify_digital():
         }), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    port = int(os.getenv("PORT", 5000))
+    app.run(debug=os.getenv("DEBUG", "True") == "True", port=port)

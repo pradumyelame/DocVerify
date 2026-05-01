@@ -12,3 +12,4 @@ easyocr
 torch
 torchvision
 flask-sqlalchemy
+python-dotenv

@@ -6,12 +6,16 @@ import requests
 from PyPDF2 import PdfReader
 from PIL import Image, ExifTags
 from pymongo import MongoClient
+from dotenv import load_dotenv
 
-AFFINDA_API_KEY = "aff_0137439bc98d9dc0ca5a1754147da4f480244450"
+# Load environment variables
+load_dotenv()
+
+AFFINDA_API_KEY = os.getenv("AFFINDA_API_KEY", "aff_0137439bc98d9dc0ca5a1754147da4f480244450")
 AFFINDA_API_URL = "https://api.affinda.com/v3/documents"
 
 # MongoDB Configuration
-MONGO_URI = "mongodb://localhost:27017/digitaldoc"
+MONGO_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/digitaldoc")
 DB_NAME = "digitaldoc"
 
 # Mock Trusted Database (Fallback)
